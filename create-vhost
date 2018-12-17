@@ -4,15 +4,15 @@ script_name=`basename "$0"`
 function help() {
 	echo ''
 	echo 'Help:'
-	echo "sudo $script_name {example} (this will create folder inside /var/www/html/example.test/)"
+	echo "sudo ./$script_name {example} (this will create folder inside /var/www/html/example.test/)"
 
 	echo ''
 	echo 'Optionally you can create multiple folders inside document root: e.g.'
-	echo "sudo $script_name {example} {folder1/folder2/} (this will create folder inside /var/www/html/folder1/folder2/example.test) the second paramter must end with slash '/'"
+	echo "sudo ./$script_name {example} {folder1/folder2/} (this will create folder inside /var/www/html/folder1/folder2/example.test) the second paramter must end with slash '/'"
 
 	echo ''
 	echo 'Force download WP (skip cache lookup) use "wp_latest" at the end of command e.g.'
-	echo "sudo $script_name {example} wp_latest"
+	echo "sudo ./$script_name {example} wp_latest"
 }
 
 num_of_params=$#
