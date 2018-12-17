@@ -1,0 +1,135 @@
+#!/bin/bash
+
+script_name=`basename "$0"`
+function help() {
+	echo ''
+	echo 'Help:'
+	echo "sudo $script_name {example} (this will create folder inside /var/www/html/example.test/)"
+
+	echo ''
+	echo 'Optionally you can create multiple folders inside document root: e.g.'
+	echo "sudo $script_name {example} {folder1/folder2/} (this will create folder inside /var/www/html/folder1/folder2/example.test) the second paramter must end with slash '/'"
+
+	echo ''
+	echo 'Force download WP (skip cache lookup) use "wp_latest" at the end of command e.g.'
+	echo "sudo $script_name {example} wp_latest"
+}
+
+num_of_params=$#
+site=$1
+site_path=$2
+
+
+# Add .test to site name
+site_name=$site'.test'
+
+
+# Run as sudo
+if [ "$EUID" -ne 0 ]
+	then 
+  		echo 'Try with sudo.' 
+  		help
+  	exit
+fi
+
+# Run as sudo
+if [ "$num_of_params" = "2" ] && [ "$2" = "wp_latest" ]
+	then 
+  		site_path=''
+fi
+
+# Atleast 1st paramter is needed e.g. example.test
+if [ -z $1 ] 
+	then
+		echo 'Required parameter is missing'
+		help
+	exit
+fi
+
+echo "--------------------------------------"
+if [ -e "/etc/apache2/sites-available/$1.conf" ] 
+	then
+	echo "Virtual host file already exist /etc/apache2/sites-available/$1.conf"
+fi
+
+# Don't create folder in document root if it is already exist
+if [ ! -e "/var/www/html/$2$1" ] 
+	then
+		mkdir -p /var/www/html/$site_path$site_name/
+		sudo chmod -R 777 /var/www/html/$site_path$site_name/
+fi
+
+# Look for host entry
+if grep -Fxq "127.0.0.1 $site_name" /etc/hosts
+	then
+    	echo "Hosts entry found"
+	else
+    	echo "127.0.0.1 "$site_name >> /etc/hosts
+		echo "Added Host Entry in /etc/hosts"
+fi
+
+
+error='.error.log'
+access='.access.log'
+conf='.conf'
+
+vhost="<VirtualHost *:80>\n
+    ServerAdmin admin@test.com\n
+    ServerName $site_name\n
+    ServerAlias $site_name\n
+    DocumentRoot /var/www/html/$site_path$site_name\n
+    <Directory />\n
+        Options FollowSymLinks\n
+        AllowOverride None\n
+    </Directory>\n
+    <Directory /var/www/html/$site_path$site_name>\n
+        Options Indexes FollowSymLinks MultiViews\n
+        AllowOverride All\n
+        Order allow,deny\n
+        allow from all\n
+    </Directory>\n
+
+    ErrorLog \${APACHE_LOG_DIR}/$site_name$error\n
+    CustomLog \${APACHE_LOG_DIR}/$site_name$access combined\n
+</VirtualHost>"
+
+echo -en $vhost > /etc/apache2/sites-available/$site_name$conf
+echo "Virtual host '$site_name' is created."
+a2ensite $site_name$conf
+echo "Reloading apache2..."
+service apache2 restart
+
+
+echo ''
+echo "Creating database..."
+mysql -uroot -e "create database $site"
+echo "database '$site' created"
+
+echo ''
+echo 'Setting up wordpress...'
+
+function download_wp() {
+    echo "Downloading wordpress..."
+    cd /tmp
+    rm -r wp_cache 2> /dev/null
+    mkdir wp_cache
+    cd wp_cache
+    wget https://wordpress.org/latest.tar.gz
+    tar -zxvf latest.tar.gz
+    cp -a wordpress/. /var/www/html/$site_path$site_name/
+}
+ 
+
+if [ "$2" = "wp_latest" ] || [ "$3" = "wp_latest" ] ; then
+    download_wp
+elif [ -d "/tmp/wp_cache/wordpress/" ]; then
+    echo "Found wordpress from cache"
+    cp -a /tmp/wp_cache/wordpress/. /var/www/html/$site_path$site_name/
+else
+    download_wp
+fi
+
+sudo chmod -R 777 /var/www/html/$site_path$site_name/
+
+echo "http://$site_name is ready"
+echo 'All done!'
