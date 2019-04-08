@@ -1,5 +1,5 @@
 # WP-Local-Setup
-This bash script will create a virtual host for your WordPress install. It will download WordPress, add host entry and create the database as well.
+This bash script will create a virtual host for your WordPress install in Ubuntu Linux. It will download WordPress, add host entry and create the database as well.
 
 # Usage:
 If you want to create example.test you would run:
